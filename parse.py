@@ -1,3 +1,4 @@
+#!/usr/bin/python
 import re
 import json
 from os import path
@@ -5,6 +6,7 @@ from random import getrandbits, choice
 ''' 
 The way it works:
 	it stores as {noun:[{general_attributes:value,,,},[True,Values],[False,Values]]}
+
 '''
 
 def inp():
@@ -25,14 +27,14 @@ def inp():
 
 def mem_load():
 	if path.isfile("memory.json"):
-		with open("memory.json","r") as f:
+		with open("memory.json","r+") as f:
 			m = json.loads(str(f.read()))
 		return m
 	return {}
 
 def mem_dump(memory):
 	with open("memory.json","w+") as f:
-		f.write(json.dumps(memory))
+		json.dump(memory, f)
 
 def mem_out(memory):
 	x = str(raw_input(".au do ma\n>"))
@@ -83,10 +85,51 @@ def mem_ins(memory,value):
 		memory = false_ins(memory,(value[0],value[1]))
 	return memory
 
-def question(memory):
+def question_smart(memory):
+	user = choice(memory.keys())
+	fin = ("",0)
+	general = match(memory)
+	u_attrs = [str(x) for x in memory[user][1]]+[str(x) for x in memory[user][2]]
+	for i in memory[user][1]:
+		for j in general[i]:
+			if j not in u_attrs and abs(general[i][j])>abs(fin[1]):
+				fin = (j,general[i][j])
+				print fin
+				print u_attrs
+	if fin == ("",0):
+		print "Fully explored"
+		return
+	attr = fin[0]
+	if fin[1]<0:
+		inter = " na "
+	else:
+		inter = " "
+	vale = raw_input(
+		"xu "+
+		user+
+		inter+
+		attr+
+		"\n>"
+	)
+	if fin[1]>0:
+		if vale == "go'i":
+			true_ins(memory,(user,attr))
+		elif vale == "nelci":
+			false_ins(memory,(user,attr))
+	else:
+		if vale == "nelci":
+			true_ins(memory,(user,attr))
+		elif vale == "go'i":
+			false_ins(memory,(user,attr))
+		
+
+def question_rand(memory):
 	user = choice(memory.keys())
 	if getrandbits(1):
-		general = choice(list(set([str(i) for j in [memory[x][0].keys() for x in memory] for i in j])))
+		general = list(set([str(i) for j in [memory[x][0].keys() for x in memory] for i in j]))
+		for i in memory[user][0]:
+			general.remove(i)
+		general = choice(general)
 		vale = raw_input(
 			user+
 			" .ao "+
@@ -96,6 +139,7 @@ def question(memory):
 		dict_ins(memory,(user,{general:vale}))
 	else:
 		attr = choice(list(set([str(i) for j in [memory[x][1]+memory[x][2] for x in memory] for i in j])))
+
 		vale = raw_input(
 			"xu "+
 			user+
@@ -108,9 +152,62 @@ def question(memory):
 		elif vale == "nelci":
 			false_ins(memory,(user,attr))
 
+def match(memory):
+	m = list(set([str(i) for j in [memory[x][1]+memory[x][2] for x in memory] for i in j]))
+	f_count = {}
+	for i in m:
+		f_count[i] = {}
+		for j in m:
+			if j!=i:
+				f_count[i][j] = 0
+	t = [memory[i][1] for i in memory.keys()]
+	f = [memory[i][2] for i in memory.keys()]
+	for h in [t,f]:
+		for i in h:
+			for j in i:
+				for k in i:
+					if k!=j:
+						f_count[j][k]+=1
+						f_count[k][j]+=1
+	for h in range(len(t)):
+		for i in t[h]:
+			for j in f[h]:
+				if i!=j:
+					f_count[i][j]-=1
+					f_count[j][i]-=1
+	return f_count
+
 if __name__ == "__main__":
 	memory = mem_load()
-#	memory = mem_ins(memory,inp())
-	question(memory)
-	mem_out(memory)
+	inpu = ""
+	while inpu!="exit":
+		inpu = raw_input("~ ")
+		if re.match("^\d+",inpu):
+			num = re.findall("^\d+",inpu)[0]
+			c = int(num)
+			inpu = inpu[len(num):]
+			print inpu
+		else:
+			c = 1
+		for i in range(0,c):
+			if inpu == "setca":
+				me = inp()
+				if me is not None:
+					memory = mem_ins(memory,me)
+			elif inpu == "retsku":
+				question_smart(memory)
+			elif inpu == "help":
+				print "setca:insert info"
+				print "retsku: question me"
+				print "exit:exit"
+			elif inpu == "memory":
+				for i in memory:
+					print i,":",memory[i],"\n"
+			elif inpu == "match":
+				x = match(memory)
+				for i in x:
+					print i,":",x[i],"\n"
+	print memory
+	print
+	print match(memory)
 	mem_dump(memory)
