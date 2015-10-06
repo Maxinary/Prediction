@@ -162,13 +162,11 @@ def match(memory):
 				f_count[i][j] = 0
 	t = [memory[i][1] for i in memory.keys()]
 	f = [memory[i][2] for i in memory.keys()]
-	for h in [t,f]:
-		for i in h:
-			for j in i:
-				for k in i:
-					if k!=j:
-						f_count[j][k]+=1
-						f_count[k][j]+=1
+	for i in t:
+		for j in i:
+			for k in i:
+				if k!=j:
+					f_count[k][j]+=1
 	for h in range(len(t)):
 		for i in t[h]:
 			for j in f[h]:
@@ -199,6 +197,8 @@ if __name__ == "__main__":
 			elif inpu == "help":
 				print "setca:insert info"
 				print "retsku: question me"
+				print "memory: dump all memory"
+				print "match: show current matching data"
 				print "exit:exit"
 			elif inpu == "memory":
 				for i in memory:
