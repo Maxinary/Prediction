@@ -85,22 +85,36 @@ def mem_ins(memory,value):
 		memory = false_ins(memory,(value[0],value[1]))
 	return memory
 
-def question_smart(memory):
-	user = choice(memory.keys())
+def question_smart(memory):#todo sum chance of probabilities
 	fin = ("",0)
 	general = match(memory)
-	u_attrs = [str(x) for x in memory[user][1]]+[str(x) for x in memory[user][2]]
-	for i in memory[user][1]:
-		for j in general[i]:
-			if j not in u_attrs and abs(general[i][j])>abs(fin[1]):
-				fin = (j,general[i][j])
-				print fin
-				print u_attrs
+	users = memory.keys()
+	
+	for x in memory.keys():
+		u_dat = {x:("",0) for x in memory.keys()}
+	for user in users:
+		u_attrs = [str(x) for x in memory[user][1]]+[str(x) for x in memory[user][2]]
+		for i in memory[user][1]:
+			for j in general[i]:
+				if general[i][j][0]+general[i][j][1]!=0:
+					value = general[i][j][0]
+					value /= float(general[i][j][1]+general[i][j][0])
+					value -= 0.5#minimum -.5, maximum +.5
+					if j not in u_attrs and abs(value)>abs(u_dat[user][1]):#doesn't ask about traits already used
+						u_dat[user] = (j,value)
+	print u_dat
+	fin = ("",0)
+	for u in users:
+		if abs(u_dat[u][1]) > fin[1]:
+			print u
+			user = u
+			fin = (u_dat[u][0],u_dat[u][1])
+
 	if fin == ("",0):
 		print "Fully explored"
 		return
 	attr = fin[0]
-	if fin[1]<0:
+	if fin[1]<=0:
 		inter = " na "
 	else:
 		inter = " "
@@ -153,26 +167,31 @@ def question_rand(memory):
 			false_ins(memory,(user,attr))
 
 def match(memory):
-	m = list(set([str(i) for j in [memory[x][1]+memory[x][2] for x in memory] for i in j]))
+	#All points where x and y are correlated
+	#if x has y in it:
+	#	if x.y is true:score+=1
+	#	else score-=1
+	all = list(set([str(i) for j in [memory[x][1]+memory[x][2] for x in memory] for i in j]))
 	f_count = {}
-	for i in m:
+	for i in all:
 		f_count[i] = {}
-		for j in m:
+		for j in all:
 			if j!=i:
-				f_count[i][j] = 0
+				f_count[i][j] = [0,0]#[amount who have correlation(both true), amount who have opposite value (x is true, y is false)]
 	t = [memory[i][1] for i in memory.keys()]
 	f = [memory[i][2] for i in memory.keys()]
+	u_all = [memory.keys()]
 	for i in t:
 		for j in i:
 			for k in i:
 				if k!=j:
-					f_count[k][j]+=1
-	for h in range(len(t)):
-		for i in t[h]:
-			for j in f[h]:
-				if i!=j:
-					f_count[i][j]-=1
-					f_count[j][i]-=1
+					f_count[k][j][0]+=1
+	for i in range(len(t)):
+		for j in t[i]:
+			for k in f[i]:
+				if j!=k:
+					f_count[j][k][1]+=1
+					f_count[k][j][1]+=1
 	return f_count
 
 if __name__ == "__main__":
