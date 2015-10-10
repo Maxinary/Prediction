@@ -102,11 +102,9 @@ def question_smart(memory):#todo sum chance of probabilities
 					value -= 0.5#minimum -.5, maximum +.5
 					if j not in u_attrs and abs(value)>abs(u_dat[user][1]):#doesn't ask about traits already used
 						u_dat[user] = (j,value)
-	print u_dat
 	fin = ("",0)
 	for u in users:
-		if abs(u_dat[u][1]) > fin[1]:
-			print u
+		if abs(u_dat[u][1]) > abs(fin[1]):
 			user = u
 			fin = (u_dat[u][0],u_dat[u][1])
 
@@ -226,7 +224,4 @@ if __name__ == "__main__":
 				x = match(memory)
 				for i in x:
 					print i,":",x[i],"\n"
-	print memory
-	print
-	print match(memory)
 	mem_dump(memory)
