@@ -3,6 +3,7 @@ import re
 import json
 from os import path
 from random import getrandbits, choice
+from database import *
 ''' 
 The way it works:
 	it stores as {noun:[{general_attributes:value,,,},[True,Values],[False,Values]]}
@@ -25,69 +26,10 @@ def inp():
 		del words[1]
 		return (words[0],{words[1]:words[2]})
 
-def mem_load():
-	if path.isfile("memory.json"):
-		with open("memory.json","r+") as f:
-			m = json.loads(str(f.read()))
-		return m
-	return {}
-
-def mem_dump(memory):
-	with open("memory.json","w+") as f:
-		json.dump(memory, f)
-
-def mem_out(memory):
-	x = str(raw_input(".au do ma\n>"))
-	if x in memory.keys():
-		for i in memory[x][0]:
-			print x+" .ao "+i+" "+memory[x][0][i]
-		for i in [l for l in memory[x][1]]:
-				print x+" "+i
-	else:
-		print "mi na sispe'i ta"
-
-def dict_ins(memory,value):
-	name = value[0]
-	key = value[1].keys()[0]
-	vale = value[1][key]
-	if value[0] in memory.keys():
-		memory[value[0]][0][value[1].keys()[0]] = value[1][value[1].keys()[0]]						
-	else:
-		memory[value[0]] = [{value[1].keys},[],[]]
-	return memory
-
-def true_ins(memory,value):
-	if value[0] in memory.keys():
-		if value[1] not in memory[value[0]][1]:
-			memory[value[0]][1].append(value[1])
-		if value[1] in memory[value[0]][2]:
-			memory[value[0]][2].remove(value[1])
-	else:
-		memory[value[0]] = [{},[value[1]],[]]
-	return memory
-
-def false_ins(memory,value):
-	if value[0] in memory.keys():
-		if value[1] not in memory[value[0]][2]:
-			memory[value[0]][2].append(value[1])
-		if value[1] in memory[value[0]][1]:
-			memory[value[0]][1].remove(value[1])
-	else:
-		memory[value[0]] = [{},[],[value[1]]]
-	return memory
-
-def mem_ins(memory,value):
-	if str(value[1].__class__) == "<type 'dict'>":
-		memory = dict_ins(memory,value)
-	elif value[2]:
-		memory = true_ins(memory,(value[0],value[1]))
-	else:
-		memory = false_ins(memory,(value[0],value[1]))
-	return memory
-
 def question_smart(memory):#todo sum chance of probabilities
+			   #uber frequentism
 	fin = ("",0)
-	general = match(memory)
+	general = frequentist_match(memory)
 	users = memory.keys()
 	
 	for x in memory.keys():
@@ -96,12 +38,9 @@ def question_smart(memory):#todo sum chance of probabilities
 		u_attrs = [str(x) for x in memory[user][1]]+[str(x) for x in memory[user][2]]
 		for i in memory[user][1]:
 			for j in general[i]:
-				if general[i][j][0]+general[i][j][1]!=0:
-					value = general[i][j][0]
-					value /= float(general[i][j][1]+general[i][j][0])
-					value -= 0.5#minimum -.5, maximum +.5
-					if j not in u_attrs and abs(value)>abs(u_dat[user][1]):#doesn't ask about traits already used
-						u_dat[user] = (j,value)
+				value = general[i][j]
+				if j not in u_attrs and abs(value)>abs(u_dat[user][1]):#doesn't ask about traits already used
+					u_dat[user] = (j,value)
 	fin = ("",0)
 	for u in users:
 		if abs(u_dat[u][1]) > abs(fin[1]):
@@ -134,44 +73,16 @@ def question_smart(memory):#todo sum chance of probabilities
 		elif vale == "go'i":
 			false_ins(memory,(user,attr))
 		
-
-def question_rand(memory):
-	user = choice(memory.keys())
-	if getrandbits(1):
-		general = list(set([str(i) for j in [memory[x][0].keys() for x in memory] for i in j]))
-		for i in memory[user][0]:
-			general.remove(i)
-		general = choice(general)
-		vale = raw_input(
-			user+
-			" .ao "+
-			general+
-			" ma\n>"
-		)
-		dict_ins(memory,(user,{general:vale}))
-	else:
-		attr = choice(list(set([str(i) for j in [memory[x][1]+memory[x][2] for x in memory] for i in j])))
-
-		vale = raw_input(
-			"xu "+
-			user+
-			" "+
-			attr+
-			"\n>"
-		)
-		if vale == "go'i":
-			true_ins(memory,(user,attr))
-		elif vale == "nelci":
-			false_ins(memory,(user,attr))
-
-def match(memory):
+def frequentist_match(memory):
 	#All points where x and y are correlated
 	#if x has y in it:
 	#	if x.y is true:score+=1
 	#	else score-=1
 	all = list(set([str(i) for j in [memory[x][1]+memory[x][2] for x in memory] for i in j]))
 	f_count = {}
+	t_abs = {}
 	for i in all:
+		t_abs[i] = 0
 		f_count[i] = {}
 		for j in all:
 			if j!=i:
@@ -181,6 +92,7 @@ def match(memory):
 	u_all = [memory.keys()]
 	for i in t:
 		for j in i:
+			t_abs[j]+=1
 			for k in i:
 				if k!=j:
 					f_count[k][j][0]+=1
@@ -190,10 +102,22 @@ def match(memory):
 				if j!=k:
 					f_count[j][k][1]+=1
 					f_count[k][j][1]+=1
+	#turn into percentage odds
+	for i in f_count:
+		for j in f_count[i]:
+			sum = f_count[i][j][0]+f_count[i][j][1]
+			if f_count[i][j][0]+f_count[i][j][1]!=0:
+				f_count[i][j] = float(f_count[i][j][0])/(f_count[i][j][1]+f_count[i][j][0])
+			else:
+				f_count[i][j] = .5
+			#multiply by the percent of population who have the attribute(or for negative, don't have the attribute)
+			f_count[i][j]-=.5
+			f_count[i][j]*=200
 	return f_count
 
+
 if __name__ == "__main__":
-	memory = mem_load()
+	memory = mem_load("noun")
 	inpu = ""
 	while inpu!="exit":
 		inpu = raw_input("~ ")
@@ -219,9 +143,13 @@ if __name__ == "__main__":
 				print "exit:exit"
 			elif inpu == "memory":
 				for i in memory:
-					print i,":",memory[i],"\n"
+					print "\n",i,":"
+					for j in i:
+						print "	",j,":",memory[i][j]
 			elif inpu == "match":
-				x = match(memory)
+				x = frequentist_match(memory)
 				for i in x:
-					print i,":",x[i],"\n"
-	mem_dump(memory)
+					print "\n",i,":"
+					for j in x[i]:
+						print "	",j,":",x[i][j]
+	mem_dump(memory,"noun")
